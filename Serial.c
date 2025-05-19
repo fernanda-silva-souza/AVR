@@ -4,7 +4,6 @@
 #include <util/delay.h>
 #include "Teclado.h"
 #include "LCD.h"
-#include "Timers.h"
 #include "Serial.h"
 
 // Incluir demais funções .h aqui depois
@@ -20,7 +19,7 @@ void USART_Init() {
 
 
 // Envia um caractere da USART (modo bloqueante)
-char USART_Transmit(unsigned char dado) {
+void USART_Transmit(unsigned char dado) {
 	while (!(UCSR0A & (1 << 6))); // Espera um caractere ser recebido
 	UDR0 = dado; // Retorna o caractere recebido
 }
