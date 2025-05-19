@@ -6,7 +6,7 @@ void envia_dados_lcd(char dado);
 void pulso_enable();
 void lcd_comando(char comando);
 void lcd_dado(char dado);
-void inicialize_lcd();
+void inicializa_lcd();
 void lcd_limpar();
 void lcd_string(char texto[]);
 
