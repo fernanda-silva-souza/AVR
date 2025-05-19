@@ -4,7 +4,6 @@
 #include <util/delay.h>
 #include "Teclado.h"
 #include "LCD.h"
-#include "Timers.h"
 #include "Serial.h"
 
 // Incluir demais funções .h aqui depois
@@ -129,7 +128,7 @@ ISR(USART0_RX_vect) {
       char saldo_formatado[16];
 
       // Copia os dados para saldo_str
-      for (i = 0; i < buffer_rx[2]; i++) {
+      for (char i = 0; i < buffer_rx[2]; i++) {
         saldo_str[i] = buffer_rx[3 + i];
       }
       saldo_str[i] = '\0';  // Finaliza a string
@@ -174,3 +173,4 @@ ISR(USART0_RX_vect) {
 
 
 // FALTOU ADICIONAR O INTERRUPT DO TIMER QUE VERIFICA INATIVIDADE E PISCA LED
+
