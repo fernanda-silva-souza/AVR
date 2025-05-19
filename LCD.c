@@ -4,7 +4,6 @@
 #include <util/delay.h>
 #include "Teclado.h"
 #include "LCD.h"
-#include "Timers.h"
 #include "Serial.h"
 
 // Incluir as demais funções .h aqui
