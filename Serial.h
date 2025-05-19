@@ -2,6 +2,7 @@
 #define SERIAL_H
 
 // Variável global representando o estado do caixa
+volatile char estado_caixa;
 extern volatile char estado_caixa;
 
 void USART_Init(void);
