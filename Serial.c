@@ -4,9 +4,9 @@
 #include <util/delay.h>
 #include "Teclado.h"
 #include "LCD.h"
-#include "Timers.h"
 #include "Serial.h"
 
+volatile char estado_caixa = 0;
 // Incluir demais funções .h aqui depois
 
 // Inicializa a USART
@@ -16,12 +16,13 @@ void USART_Init() {
 
 	UCSR0C = 0x26; // Formato de comunicação | Modo assíncrono | Paridade par | 1 stop bit | 8 bits de dados
 	UCSR0B = 0x98; // Habilita recepção, transmissão e interrupção de recepção
+	sei();
 }
 
 
 // Envia um caractere da USART (modo bloqueante)
 char USART_Transmit(unsigned char dado) {
-	while (!(UCSR0A & (1 << 6))); // Espera um caractere ser recebido
+	while((UCSR0A & (1<<UDRE0)) == 0); // Espera um caractere ser recebido
 	UDR0 = dado; // Retorna o caractere recebido
 }
 
@@ -30,7 +31,7 @@ void caixa_liberado() {
 	USART_Transmit('C');
 	USART_Transmit('L');
 	estado_caixa = 1;
-	_delay_ms(300);
+	_delay_ms(10);
 }
 
 //Envia resposta ao servidor: Caixa está travado
@@ -121,7 +122,7 @@ void caixa_pagamento(char* banco_convenio_valor) {
 
 //Envio de solicitação de impressão de comprovante
 void imprime_comprovante() {
-	// Pensar sobre como será feito	
+	// Pensar sobre como será feito
 }
 
 //Envio de finalização de sessão
