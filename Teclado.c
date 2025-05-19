@@ -16,7 +16,7 @@ unsigned char debounce(char tecla) {
     unsigned char tecla_atual = 0;
 
     while(cont < 7) {
-        _delay_1ms();
+        _delay_ms(1);
         tecla_atual = (PINK & (1 << tecla));
         if (tecla_atual == ultima_tecla) {
             cont++;
