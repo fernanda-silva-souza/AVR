@@ -5,7 +5,7 @@
 extern volatile char estado_caixa;
 
 void USART_Init(void);
-char USART_Transmit(unsigned char dado);
+char USART_Transmit(uint8_t dado);
 
 void caixa_liberado();
 void caixa_travado();
