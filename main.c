@@ -1,10 +1,18 @@
 #define F_CPU 16000000UL
 #include <avr/io.h>
 #include <util/delay.h>
+#include <avr/interrupt.h>
 #include "Teclado.h"
 #include "LCD.h"
+#include "Serial.h"
+
+volatile char bloqueado = 0;
+volatile char liberado;
+volatile char contador_segundos = 0;
+volatile unsigned char contador = 0;
 
 int main() {
+	USART_Init();
 	DDRK = 0x0F;
 	PORTK = 0xFF;
 	inicializa_lcd();
@@ -23,67 +31,71 @@ int main() {
 	lcd_string("Usuario: ");
 
 	while (1) {
-		tecla = le_tecla();
+		if (liberado == 1)
+		{
+			caixa_liberado();
+			tecla = le_tecla();
+			if (tecla == '*') {
+				if (!usuario_confirmado) {
+					pos_usuario = 0;
+					lcd_comando(0xC0);
+					lcd_string("Usuario:       ");
+					lcd_comando(0xC0 + 9);
+					} else {
+					pos_senha = 0;
+					lcd_comando(0xC0);
+					lcd_string("Senha:          ");
+					lcd_comando(0xC0 + 7);
+				}
+			}
 
-		if (tecla == '*') {
-			if (!usuario_confirmado) {
-				pos_usuario = 0;
-				lcd_comando(0xC0);
-				lcd_string("Usuario:       ");
-				lcd_comando(0xC0 + 9);
-				} else {
+			else if (!usuario_confirmado && pos_usuario < 6 && tecla >= '0' && tecla <= '9') {
+				usuario[pos_usuario++] = tecla;
+				lcd_dado(tecla);
+			}
+
+			else if (tecla == '#' && pos_usuario == 6 && !usuario_confirmado) {
+				usuario_confirmado = 1;
 				pos_senha = 0;
 				lcd_comando(0xC0);
 				lcd_string("Senha:          ");
 				lcd_comando(0xC0 + 7);
 			}
-		}
 
-		else if (!usuario_confirmado && pos_usuario < 6 && tecla >= '0' && tecla <= '9') {
-			usuario[pos_usuario++] = tecla;
-			lcd_dado(tecla);
-		}
-
-		else if (tecla == '#' && pos_usuario == 6 && !usuario_confirmado) {
-			usuario_confirmado = 1;
-			pos_senha = 0;
-			lcd_comando(0xC0);
-			lcd_string("Senha:          ");
-			lcd_comando(0xC0 + 7);
-		}
-
-		else if (usuario_confirmado && pos_senha < 6 && tecla >= '0' && tecla <= '9') {
-			senha[pos_senha++] = tecla;
-			lcd_dado('*');
-		}
-
-		else if (tecla == '#' && usuario_confirmado && pos_senha == 6) {
-			uint8_t i;
-			for (i = 0; i < 6; i++) {
-				if (usuario[i] != senha[i]) break;
+			else if (usuario_confirmado && pos_senha < 6 && tecla >= '0' && tecla <= '9') {
+				senha[pos_senha++] = tecla;
+				lcd_dado('*');
 			}
 
-			lcd_limpar();
-			lcd_comando(0x80);
-			lcd_string("BanrisUFRGS");
-			if (i == 6) {
-				lcd_comando(0xC0);
-				lcd_string("Login completo");
-				break;
-				} else {
-				tentativas++;
-				if (tentativas >= 3) {
+			else if (tecla == '#' && usuario_confirmado && pos_senha == 6) {
+				uint8_t i;
+				for (i = 0; i < 6; i++) {
+					if (usuario[i] != senha[i]) break;
+				}
+
+				lcd_limpar();
+				lcd_comando(0x80);
+				lcd_string("BanrisUFRGS");
+				if (i == 6) {
 					lcd_comando(0xC0);
-					lcd_string("Acesso negado");
-					while (1);
+					lcd_string("Login completo");
+					break;
 					} else {
-					lcd_comando(0xC0);
-					lcd_string("Senha invalida");
-					_delay_ms(1500);
-					pos_senha = 0;
-					lcd_comando(0xC0);
-					lcd_string("Senha:          ");
-					lcd_comando(0xC0 + 7);
+					if (bloqueado >= 3) {
+						lcd_comando(0xC0);
+						lcd_string("Acesso negado");
+						liberado = 0;
+						caixa_travado();
+						while (1);
+						} else {
+						lcd_comando(0xC0);
+						lcd_string("Senha invalida");
+						_delay_ms(1500);
+						pos_senha = 0;
+						lcd_comando(0xC0);
+						lcd_string("Senha:          ");
+						lcd_comando(0xC0 + 7);
+					}
 				}
 			}
 		}
