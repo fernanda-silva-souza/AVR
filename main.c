@@ -6,16 +6,29 @@
 #include "LCD.h"
 #include "Serial.h"
 
+// Configuração do LED
+//#define LED_DDR  DDRB
+//#define LED_PORT PORTB
+//#define LED_PIN  PB7
+
 volatile char bloqueado = 0;
 volatile char liberado;
-volatile char contador_segundos = 0;
 volatile unsigned char contador = 0;
+char inatividade_segundos = 0;
+char piscar_led = 0;
 
 int main() {
 	USART_Init();
 	DDRK = 0x0F;
 	PORTK = 0xFF;
 	inicializa_lcd();
+	
+	//LED_DDR |= (1 << LED_PIN); // Configura pino como saída
+	//LED_PORT &= ~(1 << LED_PIN); // LED apagado inicialmente
+
+	timer1_ctc_init(); // Inicia contador de inatividade
+	sei();
+
 
 	char usuario[7] = "";
 	char senha[7] = "";
@@ -48,12 +61,10 @@ int main() {
 					lcd_comando(0xC0 + 7);
 				}
 			}
-
 			else if (!usuario_confirmado && pos_usuario < 6 && tecla >= '0' && tecla <= '9') {
 				usuario[pos_usuario++] = tecla;
 				lcd_dado(tecla);
 			}
-
 			else if (tecla == '#' && pos_usuario == 6 && !usuario_confirmado) {
 				usuario_confirmado = 1;
 				pos_senha = 0;
@@ -85,7 +96,6 @@ int main() {
 						lcd_comando(0xC0);
 						lcd_string("Acesso negado");
 						liberado = 0;
-						caixa_travado();
 						while (1);
 						} else {
 						lcd_comando(0xC0);
