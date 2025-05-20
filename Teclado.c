@@ -24,6 +24,7 @@ unsigned char debounce(char tecla) {
 			ultima_tecla = tecla_atual;
 		}
 	}
+	reset_inatividade();
 	return tecla_atual;
 }
 
