@@ -11,7 +11,9 @@
 extern volatile char bloqueado;
 extern volatile char contador;
 extern volatile char liberado;
-extern volatile char contador_segundos;
+extern volatile char piscar_led;
+extern volatile char inatividade_segundos;
+
 volatile uint8_t USART_ReceiveBuffer;
 volatile uint8_t asci_primeiro_byte = 0;		// mensagens de 1 byte
 volatile uint8_t asci_segundo_byte = 0;		// mensagens de 2 bytes
@@ -39,22 +41,31 @@ ISR(USART0_RX_vect){
 	{
 		short_quarto_byte = USART_ReceiveBuffer;
 	}
-	if (asci_primeiro_byte == 'S' && asci_segundo_byte == 'L') // Libera��o do Terminal
+	if (asci_primeiro_byte == 'S' && asci_segundo_byte == 'L') // Liberação do Terminal
 	{
 		liberado = 1;
 	}
 	if (asci_primeiro_byte == 'S' && asci_segundo_byte == 'T') // Travamento do Terminal
 	{
-		bloqueado++;
 	}
 }
 
 ISR(TIMER1_COMPA_vect) {
-	contador_segundos++;
-
-	if (contador_segundos == 120) {
-		caixa_operando_normalmente();
-		contador_segundos = 0;
+	inatividade_segundos++;
+	if (inatividade_segundos >= 18 && !piscar_led) {
+		piscar_led = 1;
+		timer3_ctc_init(); // Começa a piscar o LED
 	}
-	
+	if (inatividade_segundos >= 30) {
+		lcd_limpar();
+		lcd_string("Sessao");
+		lcd_comando(0xC0);
+		lcd_string("encerrada");
+		// adicionar variável de estado do caixa
+	}
+}
+
+ISR(TIMER3_COMPA_vect) {
+	// Pisca LED
+	//LED_PORT ^= (1 << LED_PIN);
 }
