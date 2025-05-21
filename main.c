@@ -9,10 +9,12 @@
 #include "Funcoes.h"
 
 // Variáveis de controle global
+volatile uint8_t sessao_ativa = 0;
 volatile char bloqueado = 0;
 volatile char liberado = 0;
 volatile char piscar_led = 0;
 volatile char inatividade_segundos = 0;
+volatile uint8_t sessao_encerrada_por_inatividade = 0;
 
 // Variáveis de autenticação
 char usuario[7] = "";
@@ -77,6 +79,10 @@ void menu_operacoes() {
 	uint8_t pos = 0;
 
 	while (1) {
+		
+		if (liberado == 0) return;
+		if (sessao_ativa == 0) return;
+		
 		lcd_limpar();
 		lcd_string("1-Saque 2-Saldo");
 		lcd_comando(0xC0);
@@ -84,10 +90,8 @@ void menu_operacoes() {
 
 		opcao = le_tecla();
 
-		// Aguarda confirmação com '#'
-		while (le_tecla() != '#');
-
 		if (opcao == '1') {
+			// Saque
 			lcd_limpar();
 			lcd_string("Valor: ");
 			pos = 0;
@@ -113,6 +117,7 @@ void menu_operacoes() {
 		}
 
 		else if (opcao == '2') {
+			// Saldo
 			lcd_limpar();
 			lcd_string("Consultando...");
 			caixa_saldo();
@@ -120,6 +125,7 @@ void menu_operacoes() {
 		}
 
 		else if (opcao == '3') {
+			// Pagamento
 			lcd_limpar();
 			lcd_string("Cod. Banco:");
 			lcd_comando(0xC0);
@@ -145,27 +151,49 @@ void menu_operacoes() {
 			caixa_pagamento(valor);
 		}
 
-		_delay_ms(1000); // Aguarda antes de voltar ao menu
+		_delay_ms(1000); // Volta ao menu após operação
 	}
 }
+
 
 // === MAIN ===
 
 int main() {
 	USART_Init();
-	DDRK = 0x0F;     // Configura linhas do teclado
-	PORTK = 0xFF;    // Pull-ups ativados
-
+	DDRK = 0x0F;
+	PORTK = 0xFF;
 	inicializa_lcd();
-	timer1_ctc_init(); // Timer de inatividade
-	sei();              // Habilita interrupções globais
-
-	tela_bem_vindo();
+	timer1_ctc_init();
+	sei();
 
 	while (1) {
-		if (liberado == 1) {
-			caixa_liberado();
+		// 1. Se o terminal ainda não foi liberado pelo servidor
+		if (liberado == 0) {
+			lcd_limpar();
+			lcd_string("FORA DE");
+			lcd_comando(0xC0);
+			lcd_string("OPERACAO");
 
+			while (liberado == 0);  // aguarda o servidor liberar
+			_delay_ms(300);
+			tela_bem_vindo();
+		}
+
+		// 2. Se a sessão foi encerrada por inatividade
+		if (sessao_encerrada_por_inatividade) {
+			lcd_limpar();
+			lcd_string("Sessao");
+			lcd_comando(0xC0);
+			lcd_string("encerrada");
+
+			sessao_encerrada_por_inatividade = 0;
+
+			while (le_tecla() != '#');
+			tela_bem_vindo();
+		}
+
+		// 3. Se o servidor liberou e cliente ainda não autenticou
+		if (liberado == 1 && sessao_ativa == 0) {
 			char tecla = le_tecla();
 
 			if (tecla == '*') {
@@ -193,7 +221,6 @@ int main() {
 					}
 				}
 
-				// Tenta senha padrão se a digitada não bater com o usuário
 				if (!match) {
 					match = 1;
 					for (uint8_t i = 0; i < 6; i++) {
@@ -206,8 +233,10 @@ int main() {
 
 				if (match) {
 					login_completo();
-					menu_operacoes();   // Acesso às opções
-					tela_bem_vindo();   // Volta à tela inicial após uso
+					sessao_ativa = 1;
+					menu_operacoes();
+					sessao_ativa = 0;
+					tela_bem_vindo();
 					} else {
 					if (tentativas >= 2) {
 						acesso_negado();
@@ -219,3 +248,4 @@ int main() {
 		}
 	}
 }
+
