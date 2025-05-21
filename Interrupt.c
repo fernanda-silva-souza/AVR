@@ -9,10 +9,12 @@
 #include "Serial.h"
 #include "Funcoes.h"
 
+extern volatile uint8_t sessao_ativa;
 extern volatile char bloqueado;
 extern volatile char liberado;
 extern volatile char piscar_led;
 extern volatile char inatividade_segundos;
+extern volatile uint8_t sessao_encerrada_por_inatividade;
 
 volatile uint8_t contador_operacional = 0;
 volatile uint8_t contador = 0;
@@ -62,22 +64,19 @@ ISR(TIMER1_COMPA_vect) {
 	}
 
 	if (inatividade_segundos >= 30) {
-		lcd_limpar();
-		lcd_string("Sessao");
-		lcd_comando(0xC0);
-		lcd_string("encerrada");
-
-		// Reiniciar sessão
+		timer3_stop();
 		inatividade_segundos = 0;
 		piscar_led = 0;
-		timer3_stop();
-		liberado = 0;
+
+		sessao_ativa = 0;
+		sessao_encerrada_por_inatividade = 1;
 	}
+
 	
 	// Envio periódico de status operacional
 	if (liberado == 1) {
 		contador_operacional++;
-		if (contador_operacional >= 60) {  // A cada 60 segundos
+		if (contador_operacional >= 30) {  // A cada 60 segundos
 			caixa_operando_normalmente();
 			contador_operacional = 0;
 		}
