@@ -10,8 +10,7 @@
 
 // Variáveis de controle global
 volatile uint8_t sessao_ativa = 0;
-volatile char bloqueado = 0;
-volatile char liberado = 0;
+volatile char estado_caixa = 0;
 volatile char piscar_led = 0;
 volatile char inatividade_segundos = 0;
 volatile uint8_t sessao_encerrada_por_inatividade = 0;
@@ -67,7 +66,7 @@ void senha_invalida() {
 void acesso_negado() {
 	lcd_limpar();
 	lcd_string("Acesso negado");
-	liberado = 0;
+	estado_caixa = 0;
 	while (1); // trava terminal
 }
 
@@ -80,7 +79,7 @@ void menu_operacoes() {
 
 	while (1) {
 		
-		if (liberado == 0) return;
+		if (estado_caixa == 0) return;
 		if (sessao_ativa == 0) return;
 		
 		lcd_limpar();
@@ -168,13 +167,13 @@ int main() {
 
 	while (1) {
 		// 1. Se o terminal ainda não foi liberado pelo servidor
-		if (liberado == 0) {
+		if (estado_caixa == 0) {
 			lcd_limpar();
 			lcd_string("FORA DE");
 			lcd_comando(0xC0);
 			lcd_string("OPERACAO");
 
-			while (liberado == 0);  // aguarda o servidor liberar
+			while (estado_caixa == 0);  // aguarda o servidor liberar
 			_delay_ms(300);
 			tela_bem_vindo();
 		}
@@ -193,7 +192,7 @@ int main() {
 		}
 
 		// 3. Se o servidor liberou e cliente ainda não autenticou
-		if (liberado == 1 && sessao_ativa == 0) {
+		if (estado_caixa == 1 && sessao_ativa == 0) {
 			char tecla = le_tecla();
 
 			if (tecla == '*') {
