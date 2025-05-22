@@ -10,8 +10,7 @@
 #include "Funcoes.h"
 
 extern volatile uint8_t sessao_ativa;
-extern volatile char bloqueado;
-extern volatile char liberado;
+extern volatile char estado_caixa;
 extern volatile char piscar_led;
 extern volatile char inatividade_segundos;
 extern volatile uint8_t sessao_encerrada_por_inatividade;
@@ -42,16 +41,16 @@ ISR(USART0_RX_vect) {
 
 	// Interpretação dos comandos recebidos
 	if (asci_primeiro_byte == 'S' && asci_segundo_byte == 'L') {
-		liberado = 1;
-		bloqueado = 0;
+		caixa_liberado();
+		estado_caixa = 1; // Liberado
 		} else if (asci_primeiro_byte == 'S' && asci_segundo_byte == 'T') {
-		bloqueado = 1;
-		liberado = 0;
+		caixa_travado();
+		estado_caixa = 0; // Travado
 		lcd_limpar();
 		lcd_string("FORA DE");
 		lcd_comando(0xC0);
 		lcd_string("OPERACAO");
-	}
+		} 
 }
 
 // Temporizador para inatividade (30s máx, LED pisca a partir de 18s)
@@ -74,7 +73,7 @@ ISR(TIMER1_COMPA_vect) {
 
 	
 	// Envio periódico de status operacional
-	if (liberado == 1) {
+	if (estado_caixa == 1) {
 		contador_operacional++;
 		if (contador_operacional >= 30) {  // A cada 60 segundos
 			caixa_operando_normalmente();
