@@ -10,9 +10,11 @@
 #include "Funcoes.h"
 
 extern volatile uint8_t sessao_ativa;
-extern volatile char estado_caixa;
+extern volatile char bloqueado;
+extern volatile char liberado;
 extern volatile char piscar_led;
 extern volatile char inatividade_segundos;
+extern volatile char n = 0;
 extern volatile uint8_t sessao_encerrada_por_inatividade;
 
 volatile uint8_t contador_operacional = 0;
@@ -22,6 +24,11 @@ volatile uint8_t asci_primeiro_byte = 0;
 volatile uint8_t asci_segundo_byte = 0;
 volatile uint8_t short_terceiro_byte = 0;
 volatile uint8_t short_quarto_byte = 0;
+const char mensagem_esperada[15] = {
+	'N', 'a', 'o', ' ', 'A', 'u', 't', 'o', 'r', 'i', 'z', 'a', 'd', 'o'
+};
+char cliente[];
+char nome [];
 
 // Interrupção de recepção serial USART
 ISR(USART0_RX_vect) {
@@ -35,22 +42,45 @@ ISR(USART0_RX_vect) {
 		asci_segundo_byte = USART_ReceiveBuffer;
 		} else if (contador == 3) {
 		short_terceiro_byte = USART_ReceiveBuffer;
-		} else if (contador == 4) {
-		short_quarto_byte = USART_ReceiveBuffer;
-	}
+		}
 
 	// Interpretação dos comandos recebidos
 	if (asci_primeiro_byte == 'S' && asci_segundo_byte == 'L') {
-		caixa_liberado();
-		estado_caixa = 1; // Liberado
+		liberado = 1;
+		bloqueado = 0;
 		} else if (asci_primeiro_byte == 'S' && asci_segundo_byte == 'T') {
-		caixa_travado();
-		estado_caixa = 0; // Travado
+		bloqueado = 1;
+		liberado = 0;
 		lcd_limpar();
 		lcd_string("FORA DE");
 		lcd_comando(0xC0);
 		lcd_string("OPERACAO");
-		} 
+	}
+	
+	if(asci_primeiro_byte == 'S' && asci_segundo_byte == 'E') {
+		n = short_terceiro_byte;
+		for (char i = 0; i < n; i++) {
+			cliente[i] = USART_ReceiveBuffer;
+		}
+		for (char i = 0; i < n; i++) {
+			if (cliente[i] == mensagem_esperada[i]) {
+				lcd_limpar();
+				lcd_string("nao");
+				lcd_comando(0xC0);  // Segunda linha
+				lcd_string("existe");
+				_delay_ms(5000);
+				break;
+			} else{
+				nome[i] = cliente[i];
+				lcd_limpar();
+				lcd_dado(sim);
+				lcd_comando(0xC0);  // Segunda linha
+				lcd_string("existe");
+				_delay_ms(5000);
+				break;
+			}
+		}
+	}
 }
 
 // Temporizador para inatividade (30s máx, LED pisca a partir de 18s)
@@ -73,7 +103,7 @@ ISR(TIMER1_COMPA_vect) {
 
 	
 	// Envio periódico de status operacional
-	if (estado_caixa == 1) {
+	if (liberado == 1) {
 		contador_operacional++;
 		if (contador_operacional >= 30) {  // A cada 60 segundos
 			caixa_operando_normalmente();
