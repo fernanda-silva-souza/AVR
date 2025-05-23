@@ -222,8 +222,10 @@ int main() {
 	USART_Init();
 	DDRK = 0x0F;
 	PORTK = 0xFF;
+	DDRA |=(1<<0); //Seta pino A0 como saida para pisca led
 	inicializa_lcd();
 	timer1_ctc_init();
+	
 	sei();
 
 	while (1) {
