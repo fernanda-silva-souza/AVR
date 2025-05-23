@@ -36,7 +36,7 @@ void timer3_stop(void) {
 void delay_1ms(void) {
 	TCCR2B = 0x0B;     // CTC mode, prescaler 64
 	TCCR2A = 0;//modo normal
-	OCR2A = 124;     // 
+	OCR2A = 124;     // Ticks
 	while (!(TIFR2 & (1<<OCF2A)));
 	TIFR2|=  (1 << OCF2A); //limpa flag de comparacao
 }
@@ -44,8 +44,8 @@ void delay_1ms(void) {
 // Timer2 — delay de 2ms
 void delay_2ms(void) {
 	TCCR2B = 0x0B;     // CTC mode, prescaler 64
-	TCCR2A = 0;//modo normal
-	OCR2A = 249;     //
+	TCCR2A = 0;	//modo normal
+	OCR2A = 249;     //Ticks
 	while (!(TIFR2 & (1<<OCF2A)));
 	TIFR2|=  (1 << OCF2A); //limpa flag de comparacao
 }
@@ -53,8 +53,8 @@ void delay_2ms(void) {
 // Timer2 — delay de 2ms
 void delay_10ms(void) {
 	TCCR2B = 0x0D;     // CTC mode, prescaler 1024
-	TCCR2A = 0;//modo normal
-	OCR2A = 77;     //
+	TCCR2A = 0;	//modo normal
+	OCR2A = 77;     //Ticks
 	while (!(TIFR2 & (1<<OCF2A)));
 	TIFR2|=  (1 << OCF2A); //limpa flag de comparacao
 }
@@ -64,8 +64,8 @@ void delay_10ms(void) {
 // Timer4 — delay de 40ms
 void delay_40ms(void) {
 	TCCR4B = 0x0D;     // CTC mode, prescaler 1024
-	TCCR4A = 0;//modo normal
-	OCR4A = 311;     //
+	TCCR4A = 0;	//modo normal
+	OCR4A = 311;     //Ticks
 	while (!(TIFR4 & (1<<OCF4A)));
 	TIFR4 |=  (1 << OCF4A); //limpa flag de comparacao
 }
