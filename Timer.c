@@ -61,6 +61,7 @@ void delay_10ms(void) {
 
 
 /*
+TIMERS PARA USO DO LCD
 // Timer4 — delay de 40ms
 void delay_40ms(void) {
 	TCCR4B = 0x0D;     // CTC mode, prescaler 1024
