@@ -6,6 +6,7 @@
 #include "LCD.h"
 #include "Serial.h"
 #include "Funcoes.h"
+#include "Timer.h"
 
 // Incluir demais funções .h aqui depois
 
@@ -16,7 +17,7 @@ unsigned char debounce(char tecla) {
 	unsigned char tecla_atual = 0;
 
 	while(cont < 7) {
-		_delay_ms(2);
+		delay_10ms();
 		tecla_atual = (PINK & (1 << tecla));
 		if (tecla_atual == ultima_tecla) {
 			cont++;
