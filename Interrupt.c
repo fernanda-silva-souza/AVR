@@ -72,9 +72,9 @@ ISR(USART0_RX_vect) {
 	}
 	
 	// Interpretação dos comandos recebidos
-	if (asci_primeiro_byte == 'S' && asci_segundo_byte == 'S' && short_terceiro_byte == 'O') {
+	if (asci_primeiro_byte == 'S' && asci_segundo_byte == 'O') {
 		saque_aprovado = 1;
-		} else if (asci_primeiro_byte == 'S' && asci_segundo_byte == 'S' && short_terceiro_byte == 'I') {
+		} else if (asci_primeiro_byte == 'S' && asci_segundo_byte == 'I') {
 		saque_aprovado = 0;
 		}
 
@@ -113,7 +113,7 @@ ISR(TIMER1_COMPA_vect) {
 ISR(TIMER3_COMPA_vect) {
 	// Piscar LED aqui se for implementado fisicamente
 	// Exemplo:
-	// PORTB ^= (1 << PB7);
+	PORTA ^= (1 << PA0);
 }
 
 
