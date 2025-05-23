@@ -25,3 +25,4 @@ void timer3_stop(void) {
 	TCCR3B = 0;
 	TIMSK3 &= ~(1 << OCIE3A);
 }
+
