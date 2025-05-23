@@ -70,4 +70,14 @@ void delay_40ms(void) {
 	TIFR4 |=  (1 << OCF4A); //limpa flag de comparacao
 }
 
+// Timer4 — delay de 15ms
+void delay_15ms(void) {
+	TCCR4B = 0x0D;     // CTC mode, prescaler 1024
+	TCCR4A = 0;	//modo normal
+	OCR4A = 116;     //Ticks
+	while (!(TIFR4 & (1<<OCF4A)));
+	TIFR4 |=  (1 << OCF4A); //limpa flag de comparacao
+}
+
+
 */
