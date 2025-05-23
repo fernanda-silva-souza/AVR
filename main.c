@@ -2,6 +2,9 @@
 #include <avr/io.h>
 #include <util/delay.h>
 #include <avr/interrupt.h>
+#include <string.h>
+#include <stdio.h>
+
 #include "Teclado.h"
 #include "LCD.h"
 #include "Serial.h"
@@ -9,11 +12,15 @@
 #include "Funcoes.h"
 
 // Variáveis de controle global
+volatile char saque_aprovado = -1; // -1: aguardando, 1: sucesso, 0: insuficiente
 volatile uint8_t sessao_ativa = 0;
 volatile char estado_caixa = 0;
 volatile char piscar_led = 0;
 volatile char inatividade_segundos = 0;
 volatile uint8_t sessao_encerrada_por_inatividade = 0;
+volatile uint8_t aguardando_resposta_saldo = 0;
+char saldo_recebido[12] = ""; // para armazenar até 11 dígitos + '\0'
+
 
 // Variáveis de autenticação
 char usuario[7] = "";
@@ -66,8 +73,10 @@ void senha_invalida() {
 void acesso_negado() {
 	lcd_limpar();
 	lcd_string("Acesso negado");
-	estado_caixa = 0;
-	while (1); // trava terminal
+	lcd_comando(0xC0);
+	lcd_string("Senha bloqueada");
+	_delay_ms(3000);
+	tela_bem_vindo();
 }
 
 // === MENU DE OPERAÇÕES ===
@@ -90,10 +99,12 @@ void menu_operacoes() {
 		opcao = le_tecla();
 
 		if (opcao == '1') {
-			// Saque
 			lcd_limpar();
-			lcd_string("Valor: ");
-			pos = 0;
+			lcd_string("Valor do saque:");
+			lcd_comando(0xC0);
+			
+			char valor[10] = "";
+			uint8_t pos = 0;
 
 			while (1) {
 				char tecla = le_tecla();
@@ -101,27 +112,77 @@ void menu_operacoes() {
 				if (tecla == '#') break;
 				if (tecla == '*' && pos > 0) {
 					pos--;
-					lcd_comando(0xC0 + 7 + pos);
+					lcd_comando(0xC0 + pos);
 					lcd_dado(' ');
-					lcd_comando(0xC0 + 7 + pos);
+					lcd_comando(0xC0 + pos);
 				}
 				else if (tecla >= '0' && tecla <= '9' && pos < 6) {
 					valor[pos++] = tecla;
 					lcd_dado(tecla);
 				}
 			}
-
 			valor[pos] = '\0';
+
+			// Envia valor ao servidor
+			saque_aprovado = -1;
 			caixa_saque(valor);
+
+			// Aguarda resposta do servidor
+			while (saque_aprovado == -1);
+
+			// Exibe resultado
+			lcd_limpar();
+			if (saque_aprovado == 1) {
+				lcd_string("Saque efetuado");
+				} else if (saque_aprovado == 0) {
+				lcd_string("Saldo");
+				lcd_comando(0xC0);
+				lcd_string("insuficiente");
+			}
+
+			_delay_ms(2000); // Mostra mensagem por 2s
 		}
+
 
 		else if (opcao == '2') {
-			// Saldo
-			lcd_limpar();
-			lcd_string("Consultando...");
+			// Solicita saldo ao servidor
+			aguardando_resposta_saldo = 1;
 			caixa_saldo();
-			_delay_ms(1000);
+
+			// Espera a resposta do servidor
+			while (aguardando_resposta_saldo);
+
+			// Formata o valor recebido
+			uint8_t len = strlen(saldo_recebido);
+			char saldo_formatado[16] = "";
+			uint8_t i, j = 0;
+
+			if (len <= 2) {
+				// Exemplo: "00", "50"
+				sprintf(saldo_formatado, "R$0,%s", saldo_recebido);
+				} else {
+				for (i = 0; i < len - 2; i++) {
+					saldo_formatado[j++] = saldo_recebido[i];
+				}
+				saldo_formatado[j++] = ',';
+				saldo_formatado[j++] = saldo_recebido[len - 2];
+				saldo_formatado[j++] = saldo_recebido[len - 1];
+				saldo_formatado[j] = '\0';
+
+				// Adiciona "R$" na frente
+				char final[18];
+				sprintf(final, "R$%s", saldo_formatado);
+				strcpy(saldo_formatado, final);
+			}
+
+			// Mostra no LCD
+			lcd_limpar();
+			lcd_string("Saldo atual:");
+			lcd_comando(0xC0);
+			lcd_string(saldo_formatado);
+			_delay_ms(3000); // Mostra por 3s antes de voltar ao menu
 		}
+
 
 		else if (opcao == '3') {
 			// Pagamento
@@ -186,6 +247,7 @@ int main() {
 			lcd_string("encerrada");
 
 			sessao_encerrada_por_inatividade = 0;
+			sessao_finalizada();
 
 			while (le_tecla() != '#');
 			tela_bem_vindo();
@@ -212,21 +274,15 @@ int main() {
 				lcd_dado('*');
 			}
 			else if (tecla == '#' && usuario_confirmado && pos_senha == 6) {
+				// Envia dados ao servidor apenas para registro
+				caixa_entrada_cliente(usuario, senha);
+
+				// Verificação local: usuário == senha
 				uint8_t match = 1;
 				for (uint8_t i = 0; i < 6; i++) {
 					if (usuario[i] != senha[i]) {
 						match = 0;
 						break;
-					}
-				}
-
-				if (!match) {
-					match = 1;
-					for (uint8_t i = 0; i < 6; i++) {
-						if (senha[i] != senha_padrao[i]) {
-							match = 0;
-							break;
-						}
 					}
 				}
 
@@ -243,8 +299,8 @@ int main() {
 						senha_invalida();
 					}
 				}
+
 			}
 		}
 	}
 }
-
