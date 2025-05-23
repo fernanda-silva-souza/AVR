@@ -12,11 +12,16 @@ void timer1_ctc_init(void) {
 	TIMSK1 |= (1 << OCIE1A); // Habilita interrupção no compare
 }
 
+void timer1_stop(void) {
+	TCCR1B = 0;
+	TIMSK1 &= ~(1 << OCIE1A);
+}
+
 // Timer3 — pisca o LED a 2 Hz nos últimos 12s
 void timer3_ctc_init(void) {
 	TCCR3B = 0x0C;     // CTC mode, prescaler 256
 	TCCR3A = 0;
-	OCR3A = 31249;     // 2 Hz (16MHz / 256 / (31249 + 1) = 2 Hz)
+	OCR3A = 15624; // PISCA 2X/SEGUNDO		//31249;// 2 Hz (16MHz / 256 / (31249 + 1) = 2 Hz)
 	TIMSK3 |= (1 << OCIE3A); // Habilita interrupção no compare
 }
 
@@ -24,6 +29,7 @@ void timer3_ctc_init(void) {
 void timer3_stop(void) {
 	TCCR3B = 0;
 	TIMSK3 &= ~(1 << OCIE3A);
+	PORTA &= ~(1 << PA0);//desliga led quando encerra sessão
 }
 
 // Timer2 — delay de 1ms
