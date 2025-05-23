@@ -3,6 +3,7 @@
 #include <avr/interrupt.h>
 #include <util/delay.h>
 #include "Serial.h"
+#include "Timer.h"
 
 extern volatile char estado_caixa; // 0 = travado, 1 = liberado
 extern volatile char bloqueado;
@@ -30,19 +31,19 @@ char USART_Transmit(unsigned char dado) {
 void caixa_liberado() {
 	USART_Transmit('C');
 	USART_Transmit('L');
-	_delay_ms(10);
+	delay_10ms();
 }
 
 void caixa_travado() {
 	USART_Transmit('C');
 	USART_Transmit('T');
-	_delay_ms(10);
+	delay_10ms();
 }
 
 void caixa_data_hora() {
 	USART_Transmit('C');
 	USART_Transmit('H');
-	_delay_ms(10);
+	delay_10ms();
 }
 
 void caixa_entrada_cliente(char* usuario, char* senha) {
@@ -52,13 +53,13 @@ void caixa_entrada_cliente(char* usuario, char* senha) {
 	for (uint8_t i = 0; i < 6; i++) USART_Transmit(usuario[i]);
 	for (uint8_t i = 0; i < 6; i++) USART_Transmit(senha[i]);
 
-	_delay_ms(10);
+	delay_10ms();
 }
 
 void caixa_saldo() {
 	USART_Transmit('C');
 	USART_Transmit('V');
-	_delay_ms(10);
+	delay_10ms();
 }
 
 void caixa_saque(char* valor_saque) {
@@ -73,7 +74,7 @@ void caixa_saque(char* valor_saque) {
 
 	for (i = 0; i < n; i++) USART_Transmit(valor_saque[i]);
 
-	_delay_ms(10);
+	delay_10ms();
 }
 
 void caixa_pagamento(char* banco_convenio_valor) {
@@ -88,32 +89,32 @@ void caixa_pagamento(char* banco_convenio_valor) {
 
 	for (i = 0; i < n; i++) USART_Transmit(banco_convenio_valor[i]);
 
-	_delay_ms(10);
+	delay_10ms();
 }
 
 void caixa_boleto_recebido() {
 	USART_Transmit('C');
 	USART_Transmit('B');
-	_delay_ms(10);
+	delay_10ms();
 }
 
 void imprime_comprovante() {
 	// Implementar: decide se LCD, serial, ou outro meio
 	USART_Transmit('C');
 	USART_Transmit('R'); // Exemplo de comando de recibo
-	_delay_ms(10);
+	delay_10ms();
 }
 
 void sessao_finalizada() {
 	USART_Transmit('C');
 	USART_Transmit('F');
-	_delay_ms(10);
+	delay_10ms();
 }
 
 void caixa_operando_normalmente() {
 	USART_Transmit('C');
 	USART_Transmit('O');
-	_delay_ms(10);
+	delay_10ms();
 }
 
 // OPÇÃO A – Solicita nova senha silábica para o usuário
@@ -123,5 +124,5 @@ void caixa_troca_senha(char* usuario) {
 
 	for (uint8_t i = 0; i < 6; i++) USART_Transmit(usuario[i]);
 
-	_delay_ms(10);
+	delay_10ms();
 }
