@@ -26,3 +26,29 @@ void timer3_stop(void) {
 	TIMSK3 &= ~(1 << OCIE3A);
 }
 
+// Timer2 — delay de 1ms
+void delay_1ms(void) {
+	TCCR2B = 0x0B;     // CTC mode, prescaler 64
+	TCCR2A = 0;//modo normal
+	OCR2A = 124;     // 
+	while (!(TIFR2 & (1<<OCF2A)));
+	TIFR2|=  (1 << OCF2A); //limpa flag de comparacao
+}
+
+// Timer2 — delay de 2ms
+void delay_2ms(void) {
+	TCCR2B = 0x0B;     // CTC mode, prescaler 64
+	TCCR2A = 0;//modo normal
+	OCR2A = 249;     //
+	while (!(TIFR2 & (1<<OCF2A)));
+	TIFR2|=  (1 << OCF2A); //limpa flag de comparacao
+}
+
+// Timer2 — delay de 2ms
+void delay_10ms(void) {
+	TCCR2B = 0x0D;     // CTC mode, prescaler 64
+	TCCR2A = 0;//modo normal
+	OCR2A = 77;     //
+	while (!(TIFR2 & (1<<OCF2A)));
+	TIFR2|=  (1 << OCF2A); //limpa flag de comparacao
+}
