@@ -4,6 +4,7 @@
 #include <avr/interrupt.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h> // Para itoa
 
 #include "Teclado.h"
 #include "LCD.h"
@@ -12,7 +13,7 @@
 #include "Funcoes.h"
 
 // Variáveis de controle global
-volatile char saque_aprovado = -1; // -1: aguardando, 1: sucesso, 0: insuficiente
+volatile signed char saque_aprovado = -1; // -1: aguardando, 1: sucesso, 0: insuficiente
 volatile uint8_t sessao_ativa = 0;
 volatile char estado_caixa = 0;
 volatile char piscar_led = 0;
@@ -138,10 +139,9 @@ void menu_operacoes() {
 				lcd_string("Saldo");
 				lcd_comando(0xC0);
 				lcd_string("insuficiente");
-			}
-
-			_delay_ms(2000); // Mostra mensagem por 2s
-		}
+				} 
+			_delay_ms(2000); // Aumente o delay para ter tempo de ler o valor
+}
 
 
 		else if (opcao == '2') {
@@ -222,6 +222,7 @@ int main() {
 	USART_Init();
 	DDRK = 0x0F;
 	PORTK = 0xFF;
+	DDRA |= (1 << 0);
 	inicializa_lcd();
 	timer1_ctc_init();
 	sei();
@@ -248,6 +249,7 @@ int main() {
 
 			sessao_encerrada_por_inatividade = 0;
 			sessao_finalizada();
+			PORTA &= ~(1 << PA0);  // Desliga LED ao encerrar sessão
 
 			while (le_tecla() != '#');
 			tela_bem_vindo();
