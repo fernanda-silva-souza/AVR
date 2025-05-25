@@ -13,7 +13,4 @@ void reset_inatividade() {
 	inatividade_segundos = 0;
 	piscar_led = 0;
 	timer3_stop();
-
-	// Caso tenha LED físico, pode desligá-lo aqui:
-	// PORTB &= ~(1 << PB7);
 }
