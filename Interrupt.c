@@ -19,13 +19,13 @@ extern volatile uint8_t sessao_encerrada_por_inatividade;
 extern volatile uint8_t aguardando_resposta_saldo;
 extern char saldo_recebido[12];
 extern volatile signed char saque_aprovado;
+extern volatile char existe;
 
 const char mensagem_esperada[15] = {
 	'N', 'a', 'o', ' ', 'a', 'u', 't', 'o', 'r', 'i', 'z', 'a', 'd', 'o'
 };
 char nomeagencia[32];
 char nome[30];
-extern volatile char existe = 0;
 
 volatile uint8_t contador_operacional = 0;
 volatile uint8_t contador = 0;
