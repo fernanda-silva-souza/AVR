@@ -21,6 +21,7 @@ volatile char inatividade_segundos = 0;
 volatile uint8_t sessao_encerrada_por_inatividade = 0;
 volatile uint8_t aguardando_resposta_saldo = 0;
 char saldo_recebido[12] = ""; // para armazenar até 11 dígitos + '\0'
+volatile char existe;
 
 
 // Variáveis de autenticação
@@ -139,9 +140,9 @@ void menu_operacoes() {
 				lcd_string("Saldo");
 				lcd_comando(0xC0);
 				lcd_string("insuficiente");
-				} 
+			}
 			_delay_ms(2000); // Aumente o delay para ter tempo de ler o valor
-}
+		}
 
 
 		else if (opcao == '2') {
@@ -278,30 +279,18 @@ int main() {
 			else if (tecla == '#' && usuario_confirmado && pos_senha == 6) {
 				// Envia dados ao servidor apenas para registro
 				caixa_entrada_cliente(usuario, senha);
-
-				// Verificação local: usuário == senha
-				uint8_t match = 1;
-				for (uint8_t i = 0; i < 6; i++) {
-					if (usuario[i] != senha[i]) {
-						match = 0;
-						break;
-					}
-				}
-
-				if (match) {
-					login_completo();
+				if (existe == 1) {
 					sessao_ativa = 1;
 					menu_operacoes();
-					sessao_ativa = 0;
 					tela_bem_vindo();
-					} else {
-					if (tentativas >= 2) {
-						acesso_negado();
-						} else {
-						senha_invalida();
-					}
+					} else if (existe == 2) {
+						if (tentativas >= 2) {
+							acesso_negado();
+							} else {
+							senha_invalida();
+						}
 				}
-
+				existe = 0;
 			}
 		}
 	}
