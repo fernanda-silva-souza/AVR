@@ -4,7 +4,6 @@
 #include <avr/interrupt.h>
 #include <string.h>
 #include <stdio.h>
-#include <stdlib.h> // Para itoa
 
 #include "Teclado.h"
 #include "LCD.h"
@@ -21,7 +20,7 @@ volatile char inatividade_segundos = 0;
 volatile uint8_t sessao_encerrada_por_inatividade = 0;
 volatile uint8_t aguardando_resposta_saldo = 0;
 char saldo_recebido[12] = ""; // para armazenar até 11 dígitos + '\0'
-volatile char existe;
+volatile char existe = 0;
 
 
 // Variáveis de autenticação
