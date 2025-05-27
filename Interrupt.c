@@ -76,20 +76,18 @@ ISR(USART0_RX_vect) {
 		if (asci_primeiro_byte == 'S' && asci_segundo_byte == 'S') {
 			if (short_terceiro_byte == 'O') {
 				saque_aprovado = 1;
-				contador = 0;
 				} else if (short_terceiro_byte == 'I') {
 				saque_aprovado = 0;
-				contador = 0;
 			}
+			contador = 0;
 		}
 		else if (asci_primeiro_byte == 'S' && asci_segundo_byte == 'P') {
 			if (short_terceiro_byte == 'O') {
 				pagamento_aprovado = 1;
-				contador = 0;
 				} else if (short_terceiro_byte == 'I') {
 				pagamento_aprovado = 0;
-				contador = 0;
 			}
+			contador = 0;
 		}
 		else if (asci_primeiro_byte == 'S' && asci_segundo_byte == 'V') {
 			uint8_t tamanho = short_terceiro_byte;
@@ -130,6 +128,9 @@ ISR(USART0_RX_vect) {
 					//_delay_ms(2000);
 				}
 			}
+			contador = 0;
+		}
+		else {
 			contador = 0;
 		}
 	}
