@@ -24,6 +24,11 @@ volatile uint8_t aguardando_resposta_saldo = 0;
 char saldo_recebido[12] = ""; // para armazenar até 11 dígitos + '\0'
 volatile char existe = 0;
 
+extern char nome[30];
+
+char ultimo_usuario[30];
+char tipo_transacao[20];
+char detalhes_transacao[128];
 
 // Variáveis de autenticação
 char usuario[7] = "";
@@ -82,6 +87,35 @@ void acesso_negado() {
 	tela_bem_vindo();
 }
 
+// Comprovante Impresso
+
+void oferecer_impressao_comprovante() {
+	lcd_limpar();
+	lcd_string("Imprimir Comp.?");
+	lcd_comando(0xC0);
+	lcd_string("1-SIM   2-NAO"); // Using '1' and '2' keys
+
+	char escolha = ' ';
+	while (escolha != '1' && escolha != '2') {
+		escolha = le_tecla();
+		if (estado_caixa == 0 || sessao_ativa == 0) return;
+	}
+
+	if (escolha == '1') {
+		char data_para_comprovante[200];
+		sprintf(data_para_comprovante, "Cliente: %s | Operacao: %s | %s", ultimo_usuario, tipo_transacao, detalhes_transacao);
+
+		imprime_comprovante(data_para_comprovante);
+
+		lcd_limpar();
+		lcd_string("Comprovante");
+		lcd_comando(0xC0);
+		lcd_string("enviado");
+
+		_delay_ms(2500);
+	}
+}
+
 // === MENU DE OPERAÇÕES ===
 
 void menu_operacoes() {
@@ -135,12 +169,18 @@ void menu_operacoes() {
 			lcd_limpar();
 			if (saque_aprovado == 1) {
 				lcd_string("Saque efetuado");
+				_delay_ms(3000);
+				strcpy(ultimo_usuario, nome);
+				strcpy(tipo_transacao, "SAQUE");
+				long valor_saque_long = atol(valor);
+				sprintf(detalhes_transacao, "R$%ld,%02ld", valor_saque_long / 100, valor_saque_long % 100);
+				oferecer_impressao_comprovante();
 				} else if (saque_aprovado == 0) {
 				lcd_string("Saldo");
 				lcd_comando(0xC0);
 				lcd_string("insuficiente");
+				_delay_ms(3000);
 			}
-			_delay_ms(3000); // Aumente o delay para ter tempo de ler o valor
 		}
 
 
@@ -271,13 +311,19 @@ void menu_operacoes() {
 					lcd_string("Pagamento");
 					lcd_comando(0xC0);
 					lcd_string("efetuado");
+					_delay_ms(3000);
+					strcpy(ultimo_usuario, nome);
+					strcpy(tipo_transacao, "PAGAMENTO");
+					long valor_pag_long = atol(valor_final_para_envio_str);
+					sprintf(detalhes_transacao, "Banco:%s Convenio:%s Valor:R$%ld,%02ld", banco_str, convenio_str, valor_pag_long / 100, valor_pag_long % 100);
+					oferecer_impressao_comprovante();
 					} else if (pagamento_aprovado == 0) { // SPI - Saldo Insuficiente
 					lcd_string("Saldo");
 					lcd_comando(0xC0);
 					lcd_string("Insuficiente");
+					_delay_ms(3000);
 					} 
 				}
-				_delay_ms(3000); // Mostrar mensagem por 3 segundos
 			}
 		_delay_ms(1000); // Volta ao menu após operação
 	}
