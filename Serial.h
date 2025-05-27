@@ -17,7 +17,7 @@ void caixa_data_hora(void);
 void caixa_entrada_cliente(char* usuario, char* senha);
 void caixa_saldo(void);
 void caixa_saque(char* valor_saque);
-void caixa_pagamento(char* banco_convenio_valor);
+void caixa_pagamento(char* banco, char* convenio, char* valor_str);
 void caixa_boleto_recebido(void);
 void imprime_comprovante(void);
 void sessao_finalizada(void);
