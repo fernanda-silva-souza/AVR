@@ -76,17 +76,33 @@ void caixa_saque(char* valor_saque) {
 	_delay_ms(10);
 }
 
-void caixa_pagamento(char* banco_convenio_valor) {
+void caixa_pagamento(char* banco, char* convenio, char* valor_str) {
 	uint8_t i = 0;
-	uint8_t n = 0;
+	uint8_t len_banco = 0;
+	uint8_t len_convenio = 0;
+	uint8_t len_valor = 0;
 
-	while (banco_convenio_valor[n] != '\0' && n < 127) n++;
+	// Calculate lengths of each part
+	while (banco[len_banco] != '\0' && len_banco < 255) len_banco++;
+	while (convenio[len_convenio] != '\0' && len_convenio < 255) len_convenio++;
+	while (valor_str[len_valor] != '\0' && len_valor < 255) len_valor++;
+	
+	// n is the total number of bytes in the data payload (banco + convenio + valor)
+	uint8_t n_bytes = len_banco + len_convenio + len_valor;
 
 	USART_Transmit('C');
 	USART_Transmit('P');
-	USART_Transmit(n);
+	USART_Transmit(n_bytes); // Send the calculated length 'n'
 
-	for (i = 0; i < n; i++) USART_Transmit(banco_convenio_valor[i]);
+	for (i = 0; i < len_banco; i++) {
+		USART_Transmit(banco[i]);
+	}
+	for (i = 0; i < len_convenio; i++) {
+		USART_Transmit(convenio[i]);
+	}
+	for (i = 0; i < len_valor; i++) {
+		USART_Transmit(valor_str[i]);
+	}
 
 	_delay_ms(10);
 }
