@@ -19,7 +19,7 @@ void caixa_saldo(void);
 void caixa_saque(char* valor_saque);
 void caixa_pagamento(char* banco, char* convenio, char* valor_str);
 void caixa_boleto_recebido(void);
-void imprime_comprovante(void);
+void imprime_comprovante(char* dados_comprovante);
 void sessao_finalizada(void);
 void caixa_operando_normalmente(void);
 
