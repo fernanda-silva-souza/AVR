@@ -113,11 +113,22 @@ void caixa_boleto_recebido() {
 	_delay_ms(10);
 }
 
-void imprime_comprovante() {
-	// Implementar: decide se LCD, serial, ou outro meio
+void imprime_comprovante(char* dados_comprovante) {
+	uint16_t data_len = 0;
+	while (dados_comprovante[data_len] != '\0' && data_len < 65530) {
+		data_len++;
+	}
+
 	USART_Transmit('C');
-	USART_Transmit('R'); // Exemplo de comando de recibo
-	_delay_ms(10);
+	USART_Transmit('I');
+
+	USART_Transmit((unsigned char)(data_len >> 8)); 
+	USART_Transmit((unsigned char)(data_len & 0xFF));
+
+	for (uint16_t i = 0; i < data_len; i++) {
+		USART_Transmit(dados_comprovante[i]);
+	}
+	_delay_ms(20);
 }
 
 void sessao_finalizada() {
