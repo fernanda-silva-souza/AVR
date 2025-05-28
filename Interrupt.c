@@ -3,6 +3,7 @@
 #include <avr/interrupt.h>
 #include <util/delay.h>
 #include <string.h>
+#include <stdlib.h>
 
 #include "Teclado.h"
 #include "LCD.h"
@@ -16,16 +17,25 @@ extern volatile char piscar_led;
 extern volatile char inatividade_segundos;
 extern volatile uint8_t sessao_encerrada_por_inatividade;
 extern volatile uint8_t aguardando_resposta_saldo;
-extern char saldo_recebido[12];
+char saldo_recebido[12];
 extern volatile signed char saque_aprovado;
-extern volatile signed char pagamento_aprovado;
-extern volatile char existe;
+
+extern char saldoformatado[15];
 
 const char mensagem_esperada[15] = {
 	'N', 'a', 'o', ' ', 'a', 'u', 't', 'o', 'r', 'i', 'z', 'a', 'd', 'o'
 };
 char nomeagencia[32];
 char nome[30];
+extern volatile char existe = 0;
+
+char diameshoramin[4];
+volatile char hora_recebida = 0;
+volatile char dia = 0;
+volatile char hora = 0;
+volatile char min = 0;
+volatile char seg = 0;
+extern volatile char fora_de_funcionamento;
 
 volatile uint8_t contador_operacional = 0;
 volatile uint8_t contador = 0;
@@ -38,7 +48,7 @@ volatile uint8_t short_quarto_byte = 0;
 ISR(USART0_RX_vect) {
 	USART_ReceiveBuffer = UDR0;
 
-	if (USART_ReceiveBuffer == 'S' && contador == 0) {
+	if (USART_ReceiveBuffer == 'S' && contador == 0) { 
 		asci_primeiro_byte = USART_ReceiveBuffer;
 		asci_segundo_byte = 0;
 		short_terceiro_byte = 0;
@@ -55,7 +65,7 @@ ISR(USART0_RX_vect) {
 		contador = 4;
 		} else {
 		contador = 0;
-		return;
+		return; 
 	}
 	if (contador == 2) {
 		if (asci_primeiro_byte == 'S' && asci_segundo_byte == 'L') {
@@ -69,28 +79,36 @@ ISR(USART0_RX_vect) {
 			lcd_string("FORA DE");
 			lcd_comando(0xC0);
 			lcd_string("OPERACAO");
-			contador = 0;
+			contador = 0; 
+		} else if (asci_primeiro_byte == 'S' && asci_segundo_byte == 'H') {
+		uint8_t j = 0;
+		for (j = 0; j < 4; j++){
+			while (!(UCSR0A & (1 << RXC0)));
+			diameshoramin[j] = UDR0;
+			//lcd_limpar();
+			//exibir_numero_lcd_com_dado(diameshoramin[j]);
+			//_delay_ms(2000);
+		}
+		diameshoramin[j] = '\0';
+		dia = diameshoramin[0];
+		hora = diameshoramin[2];
+		min = diameshoramin[3];
+		caixa_data_hora();
+		contador = 0; 
 		}
 	}
 	if (contador == 3) {
 		if (asci_primeiro_byte == 'S' && asci_segundo_byte == 'S') {
 			if (short_terceiro_byte == 'O') {
 				saque_aprovado = 1;
+				contador = 0; 
 				} else if (short_terceiro_byte == 'I') {
 				saque_aprovado = 0;
+				contador = 0; 
 			}
-			contador = 0;
-		}
-		else if (asci_primeiro_byte == 'S' && asci_segundo_byte == 'P') {
-			if (short_terceiro_byte == 'O') {
-				pagamento_aprovado = 1;
-				} else if (short_terceiro_byte == 'I') {
-				pagamento_aprovado = 0;
-			}
-			contador = 0;
 		}
 		else if (asci_primeiro_byte == 'S' && asci_segundo_byte == 'V') {
-			uint8_t tamanho = short_terceiro_byte;
+			uint8_t tamanho = short_terceiro_byte; 
 			uint8_t i;
 			if (tamanho > 11) {
 				tamanho = 11;
@@ -100,8 +118,20 @@ ISR(USART0_RX_vect) {
 				saldo_recebido[i] = UDR0;
 			}
 			saldo_recebido[i] = '\0';
+			
+			char k = 0;
+			saldoformatado[k++]='R';
+			saldoformatado[k++]='$';
+			for (i = 0; i < (tamanho-2); i++) {
+				saldoformatado[k++] = saldo_recebido[i];
+			}
+			saldoformatado[k++]=',';
+			saldoformatado[k++] = saldo_recebido[tamanho-2];
+			saldoformatado[k++] = saldo_recebido[tamanho-1];
+			saldoformatado[k++] = '\0';
+
 			aguardando_resposta_saldo = 0;
-			contador = 0;
+			contador = 0; 
 		}
 		else if (asci_primeiro_byte == 'S' && asci_segundo_byte == 'E') {
 			char n = short_terceiro_byte;
@@ -119,24 +149,20 @@ ISR(USART0_RX_vect) {
 			}
 			if (iguais == n) {
 				existe = 2; //nao existe esse usuario
-				} else {
+			} else {
 				existe = 1; //usuario existe
 				for (j = 0; j < (n-3); j++) {
-					nome[j] = nomeagencia [j];
+					nome[j] = nomeagencia[j];
 					//lcd_limpar();
 					//lcd_dado(nome[j]);
 					//_delay_ms(2000);
 				}
 			}
-			contador = 0;
-		}
-		else {
-			contador = 0;
+			contador = 0; 
 		}
 	}
 }
 
-// Temporizador para inatividade (30s máx, LED pisca a partir de 18s)
 ISR(TIMER1_COMPA_vect) {
 	inatividade_segundos++;
 
@@ -154,13 +180,37 @@ ISR(TIMER1_COMPA_vect) {
 		sessao_encerrada_por_inatividade = 1;
 	}
 
-	
-	// Envio periódico de status operacional
 	if (estado_caixa == 1) {
 		contador_operacional++;
-		if (contador_operacional >= 30) {  // A cada 60 segundos
+		if (contador_operacional >= 20) {  // A cada 60 segundos
 			caixa_operando_normalmente();
 			contador_operacional = 0;
+		}
+	}
+	
+	if (hora_recebida == 1) {
+		seg++;
+		if (seg >= 60) {
+			seg = 0; 
+			min++;
+			//lcd_limpar();
+			//exibir_numero_lcd_com_dado(min);
+			if (min >= 60) {
+				min = 0;
+				hora++;
+				//lcd_limpar();
+				//exibir_numero_lcd_com_dado(hora);
+				if (hora >= 24) {
+					hora = 0;
+					dia++;
+				}
+			}
+		}
+		if (hora >= 8 && hora < 20) {
+			fora_de_funcionamento = 0;
+		}
+		else {
+			fora_de_funcionamento = 1;
 		}
 	}
 }
