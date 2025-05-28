@@ -4,7 +4,7 @@
 #include <avr/interrupt.h>
 #include <string.h>
 #include <stdio.h>
-#include <stdlib.h>
+#include <stdlib.h> // Para itoa
 
 #include "Teclado.h"
 #include "LCD.h"
@@ -14,21 +14,16 @@
 
 // Variáveis de controle global
 volatile signed char saque_aprovado = -1; // -1: aguardando, 1: sucesso, 0: insuficiente
-volatile signed char pagamento_aprovado = -1;
 volatile uint8_t sessao_ativa = 0;
 volatile char estado_caixa = 0;
 volatile char piscar_led = 0;
 volatile char inatividade_segundos = 0;
 volatile uint8_t sessao_encerrada_por_inatividade = 0;
 volatile uint8_t aguardando_resposta_saldo = 0;
-char saldo_recebido[12] = ""; // para armazenar até 11 dígitos + '\0'
-volatile char existe = 0;
+char saldoformatado[12] = ""; // para armazenar até 11 dígitos + '\0'
+volatile char existe;
+volatile char fora_de_funcionamento = 0;
 
-extern char nome[30];
-
-char ultimo_usuario[30];
-char tipo_transacao[20];
-char detalhes_transacao[128];
 
 // Variáveis de autenticação
 char usuario[7] = "";
@@ -87,45 +82,17 @@ void acesso_negado() {
 	tela_bem_vindo();
 }
 
-// Comprovante Impresso
-
-void oferecer_impressao_comprovante() {
-	lcd_limpar();
-	lcd_string("Imprimir Comp.?");
-	lcd_comando(0xC0);
-	lcd_string("1-SIM   2-NAO"); // Using '1' and '2' keys
-
-	char escolha = ' ';
-	while (escolha != '1' && escolha != '2') {
-		escolha = le_tecla();
-		if (estado_caixa == 0 || sessao_ativa == 0) return;
-	}
-
-	if (escolha == '1') {
-		char data_para_comprovante[200];
-		sprintf(data_para_comprovante, "Cliente: %s | Operacao: %s | %s", ultimo_usuario, tipo_transacao, detalhes_transacao);
-
-		imprime_comprovante(data_para_comprovante);
-
-		lcd_limpar();
-		lcd_string("Comprovante");
-		lcd_comando(0xC0);
-		lcd_string("enviado");
-
-		_delay_ms(2500);
-	}
-}
-
 // === MENU DE OPERAÇÕES ===
 
 void menu_operacoes() {
 	char opcao = 0;
+	char valor[10] = "";
+	uint8_t pos = 0;
 
 	while (1) {
-		
 		if (estado_caixa == 0) return;
 		if (sessao_ativa == 0) return;
-		
+		if (fora_de_funcionamento == 1) return;
 		lcd_limpar();
 		lcd_string("1-Saque 2-Saldo");
 		lcd_comando(0xC0);
@@ -169,166 +136,57 @@ void menu_operacoes() {
 			lcd_limpar();
 			if (saque_aprovado == 1) {
 				lcd_string("Saque efetuado");
-				_delay_ms(3000);
-				strcpy(ultimo_usuario, nome);
-				strcpy(tipo_transacao, "SAQUE");
-				long valor_saque_long = atol(valor);
-				sprintf(detalhes_transacao, "R$%ld,%02ld", valor_saque_long / 100, valor_saque_long % 100);
-				oferecer_impressao_comprovante();
 				} else if (saque_aprovado == 0) {
 				lcd_string("Saldo");
 				lcd_comando(0xC0);
 				lcd_string("insuficiente");
-				_delay_ms(3000);
 			}
+			_delay_ms(2000); // Aumente o delay para ter tempo de ler o valor
 		}
 
 
 		else if (opcao == '2') {
-			// Solicita saldo ao servidor
 			aguardando_resposta_saldo = 1;
 			caixa_saldo();
 
-			// Espera a resposta do servidor
 			while (aguardando_resposta_saldo);
-
-			// Formata o valor recebido
-			uint8_t len = strlen(saldo_recebido);
-			char saldo_formatado[16] = "";
-			uint8_t i, j = 0;
-
-			if (len <= 2) {
-				// Exemplo: "00", "50"
-				sprintf(saldo_formatado, "R$0,%s", saldo_recebido);
-				} else {
-				for (i = 0; i < len - 2; i++) {
-					saldo_formatado[j++] = saldo_recebido[i];
-				}
-				saldo_formatado[j++] = ',';
-				saldo_formatado[j++] = saldo_recebido[len - 2];
-				saldo_formatado[j++] = saldo_recebido[len - 1];
-				saldo_formatado[j] = '\0';
-
-				// Adiciona "R$" na frente
-				char final[18];
-				sprintf(final, "R$%s", saldo_formatado);
-				strcpy(saldo_formatado, final);
-			}
 
 			// Mostra no LCD
 			lcd_limpar();
 			lcd_string("Saldo atual:");
 			lcd_comando(0xC0);
-			lcd_string(saldo_formatado);
+			lcd_string(saldoformatado);
 			_delay_ms(3000); // Mostra por 3s antes de voltar ao menu
 		}
 
 
 		else if (opcao == '3') {
+			// Pagamento
 			lcd_limpar();
-			lcd_string("Cod. do boleto:");
+			lcd_string("Cod. Banco:");
+			lcd_comando(0xC0);
+			pos = 0;
+			while (1) {
+				char tecla = le_tecla();
 
-			char codigo_boleto_completo[48];
-			uint8_t total_pos_boleto = 0;
-			uint8_t digitos_segmento_alvo[3] = {16, 16, 15}; // Digitos de cada parte
-
-			for(uint8_t i=0; i<48; i++) codigo_boleto_completo[i] = '\0';
-
-			for (uint8_t segmento_idx = 0; segmento_idx < 3; segmento_idx++) {
-				lcd_comando(0xC0);
-				for (uint8_t k = 0; k < 16; k++) lcd_dado(' ');
-				lcd_comando(0xC0);
-
-				char buffer_segmento_atual[17] = "";
-				uint8_t pos_no_segmento = 0;
-				uint8_t max_digitos_segmento = digitos_segmento_alvo[segmento_idx];
-
-				while (1) {
-					char tecla = le_tecla();
-
-					if (tecla == '#') { 
-						if (pos_no_segmento == max_digitos_segmento) {
-							strncpy(codigo_boleto_completo + total_pos_boleto, buffer_segmento_atual, pos_no_segmento);
-							total_pos_boleto += pos_no_segmento;
-							break;
-							} else {
-							// Not enough digits, '#' is ignored. User must complete the segment.
-						}
-						} else if (tecla == '*') { // Backspace
-						if (pos_no_segmento > 0) {
-							pos_no_segmento--;
-							buffer_segmento_atual[pos_no_segmento] = '\0';
-							lcd_comando(0xC0 + pos_no_segmento); // Move cursor back
-							lcd_dado(' ');                   // Erase char on LCD
-							lcd_comando(0xC0 + pos_no_segmento); // Move cursor back again
-						}
-						} else if (tecla >= '0' && tecla <= '9') { // Numeric input
-						if (pos_no_segmento < max_digitos_segmento) {
-							if (pos_no_segmento < 16) { // Ensure it fits on one LCD line display
-								buffer_segmento_atual[pos_no_segmento] = tecla;
-								lcd_dado(tecla); // Display digit
-								pos_no_segmento++;
-							}
-						}
-					}
-					// Allow session timeout to break this loop if necessary via main loop logic
-					if (estado_caixa == 0 || sessao_ativa == 0) return; // Exit if session ends
+				if (tecla == '#') break;
+				if (tecla == '*' && pos > 0) {
+					pos--;
+					lcd_comando(0xC0 + pos);
+					lcd_dado(' ');
+					lcd_comando(0xC0 + pos);
+				}
+				else if (tecla >= '0' && tecla <= '9' && pos < 12) {
+					valor[pos++] = tecla;
+					lcd_dado(tecla);
 				}
 			}
-			codigo_boleto_completo[total_pos_boleto] = '\0'; // Ensure null termination
-
-			// Proceed only if the full 47 digits were collected
-			if (total_pos_boleto == 47) {
-				char banco_str[4];
-				char convenio_str[5];
-				char valor_ultimos_10_digitos_str[11];
-				char valor_final_para_envio_str[12]; // For value like "2700" or "123456"
-
-				// 1. Extrair Banco (primeiros 3 dígitos)
-				strncpy(banco_str, codigo_boleto_completo, 3);
-				banco_str[3] = '\0';
-
-				// 2. Extrair Convênio (dígitos 5, 6, 7, 8 -- 0-indexed: 4, 5, 6, 7)
-				strncpy(convenio_str, codigo_boleto_completo + 4, 4);
-				convenio_str[4] = '\0';
-
-				// 3. Extrair Valor (últimos 10 dígitos)
-				strncpy(valor_ultimos_10_digitos_str, codigo_boleto_completo + 37, 10);
-				valor_ultimos_10_digitos_str[10] = '\0';
-				
-				// Convert 10-digit value string (e.g., "0000002700") to integer, then to string (e.g., "2700")
-				long valor_long = atol(valor_ultimos_10_digitos_str); // stdlib.h needed
-				sprintf(valor_final_para_envio_str, "%ld", valor_long); // stdio.h needed
-
-				// Enviar para o servidor
-				pagamento_aprovado = -1; // Reset status before sending
-				caixa_pagamento(banco_str, convenio_str, valor_final_para_envio_str);
-				
-				while (pagamento_aprovado == -1);
-				
-				lcd_limpar();
-				if (pagamento_aprovado == 1) { // SPO - OK
-					lcd_string("Pagamento");
-					lcd_comando(0xC0);
-					lcd_string("efetuado");
-					_delay_ms(3000);
-					strcpy(ultimo_usuario, nome);
-					strcpy(tipo_transacao, "PAGAMENTO");
-					long valor_pag_long = atol(valor_final_para_envio_str);
-					sprintf(detalhes_transacao, "Banco:%s Convenio:%s Valor:R$%ld,%02ld", banco_str, convenio_str, valor_pag_long / 100, valor_pag_long % 100);
-					oferecer_impressao_comprovante();
-					} else if (pagamento_aprovado == 0) { // SPI - Saldo Insuficiente
-					lcd_string("Saldo");
-					lcd_comando(0xC0);
-					lcd_string("Insuficiente");
-					_delay_ms(3000);
-					} 
-				}
-			}
+			valor[pos] = '\0';
+			caixa_pagamento(valor);
+		}
 		_delay_ms(1000); // Volta ao menu após operação
 	}
 }
-
 
 // === MAIN ===
 
@@ -343,13 +201,13 @@ int main() {
 
 	while (1) {
 		// 1. Se o terminal ainda não foi liberado pelo servidor
-		if (estado_caixa == 0) {
+		if (estado_caixa == 0 || fora_de_funcionamento == 1) {
 			lcd_limpar();
 			lcd_string("FORA DE");
 			lcd_comando(0xC0);
 			lcd_string("OPERACAO");
 
-			while (estado_caixa == 0);  // aguarda o servidor liberar
+			while (estado_caixa == 0 || fora_de_funcionamento == 1);
 			_delay_ms(300);
 			tela_bem_vindo();
 		}
@@ -397,11 +255,11 @@ int main() {
 					menu_operacoes();
 					tela_bem_vindo();
 					} else if (existe == 2) {
-					if (tentativas >= 2) {
-						acesso_negado();
-						} else {
-						senha_invalida();
-					}
+						if (tentativas >= 2) {
+							acesso_negado();
+							} else {
+							senha_invalida();
+						}
 				}
 				existe = 0;
 			}
