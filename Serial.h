@@ -8,7 +8,7 @@ extern volatile char estado_caixa;
 
 // Inicialização da USART
 void USART_Init(void);
-char USART_Transmit(uint8_t dado);
+char USART_Transmit(unsigned char dado);
 
 // Comunicação com o servidor
 void caixa_liberado(void);
@@ -17,9 +17,9 @@ void caixa_data_hora(void);
 void caixa_entrada_cliente(char* usuario, char* senha);
 void caixa_saldo(void);
 void caixa_saque(char* valor_saque);
-void caixa_pagamento(char* banco_convenio_valor);
+void caixa_pagamento(char* banco, char* convenio, char* valor_str);
 void caixa_boleto_recebido(void);
-void imprime_comprovante(void);
+void imprime_comprovante(unsigned char* dados_comprovante);
 void sessao_finalizada(void);
 void caixa_operando_normalmente(void);
 
