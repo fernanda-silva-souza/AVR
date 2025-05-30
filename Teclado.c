@@ -6,8 +6,7 @@
 #include "LCD.h"
 #include "Serial.h"
 #include "Funcoes.h"
-
-// Incluir demais funções .h aqui depois
+#include "Timer.h"
 
 // Realiza o debounce
 unsigned char debounce(char tecla) {
@@ -30,7 +29,7 @@ unsigned char debounce(char tecla) {
 }
 
 // Realiza leitura do teclado
-unsigned char le_tecla() {
+unsigned char le_tecla(void) {
 	unsigned char tecla_pressionada = 0;
 
 	// Linha 1
